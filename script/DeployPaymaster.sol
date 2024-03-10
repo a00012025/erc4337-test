@@ -12,9 +12,9 @@ contract DeployScript is Script {
         TokenPaymaster.TokenPaymasterConfig memory tokenPaymasterConfig = TokenPaymaster
             .TokenPaymasterConfig(
                 1e26 + 5e23, // 100.5%
-                5e17, // 0.5 MATIC
-                40000, // gas to trasnfer token
-                1800 // max age 30 minutes
+                0, // 0 MATIC
+                25000, // gas to trasnfer token
+                86400 // max age 1 day
             );
         OracleHelper.OracleHelperConfig memory oracleConfig = OracleHelper
             .OracleHelperConfig(
