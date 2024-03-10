@@ -23,7 +23,7 @@ contract DeployScript is Script {
                 IOracle(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0), // MATIC/USD
                 IOracle(0x0000000000000000000000000000000000000000),
                 true,
-                false,
+                true,
                 false,
                 1e23 // 0.1%
             );
