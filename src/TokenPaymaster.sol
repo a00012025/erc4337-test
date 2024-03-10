@@ -156,8 +156,10 @@ contract TokenPaymaster is BasePaymaster, UniswapHelper, OracleHelper {
                     cachedPriceWithMarkup = clientSuppliedPrice;
                 }
             }
+            uint8 tokenDecimals = token.decimals();
             uint256 tokenAmount = weiToToken(
                 preChargeNative,
+                tokenDecimals,
                 cachedPriceWithMarkup
             );
             SafeERC20.safeTransferFrom(
@@ -202,8 +204,10 @@ contract TokenPaymaster is BasePaymaster, UniswapHelper, OracleHelper {
             uint256 actualChargeNative = actualGasCost +
                 tokenPaymasterConfig.refundPostopCost *
                 actualUserOpFeePerGas;
+            uint8 tokenDecimals = token.decimals();
             uint256 actualTokenNeeded = weiToToken(
                 actualChargeNative,
+                tokenDecimals,
                 cachedPriceWithMarkup
             );
             if (preCharge > actualTokenNeeded) {

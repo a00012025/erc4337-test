@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 /* solhint-disable not-rely-on-time */
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/IPeripheryPayments.sol";
@@ -29,7 +30,7 @@ abstract contract UniswapHelper {
     ISwapRouter public immutable uniswap;
 
     /// @notice The ERC20 token used for transaction fee payments
-    IERC20 public immutable token;
+    IERC20Metadata public immutable token;
 
     /// @notice The ERC-20 token that wraps the native asset for current chain
     IERC20 public immutable wrappedNative;
@@ -37,7 +38,7 @@ abstract contract UniswapHelper {
     UniswapHelperConfig private uniswapHelperConfig;
 
     constructor(
-        IERC20 _token,
+        IERC20Metadata _token,
         IERC20 _wrappedNative,
         ISwapRouter _uniswap,
         UniswapHelperConfig memory _uniswapHelperConfig
@@ -56,12 +57,13 @@ abstract contract UniswapHelper {
     }
 
     function _maybeSwapTokenToWeth(
-        IERC20 tokenIn,
+        IERC20Metadata tokenIn,
         uint256 quote
     ) internal returns (uint256) {
         uint256 tokenBalance = tokenIn.balanceOf(address(this));
+        uint8 tokenDecimals = tokenIn.decimals();
         uint256 amountOutMin = addSlippage(
-            tokenToWei(tokenBalance, quote),
+            tokenToWei(tokenBalance, tokenDecimals, quote),
             uniswapHelperConfig.slippage
         );
         if (amountOutMin < uniswapHelperConfig.minSwapAmount) {
@@ -87,16 +89,34 @@ abstract contract UniswapHelper {
 
     function tokenToWei(
         uint256 amount,
+        uint8 tokenDecimals,
         uint256 price
     ) public pure returns (uint256) {
-        return (amount * price) / PRICE_DENOMINATOR;
+        if (tokenDecimals >= 18) {
+            return
+                (amount * price) /
+                (PRICE_DENOMINATOR * 10 ** (tokenDecimals - 18));
+        } else {
+            return
+                (amount * price * 10 ** (18 - tokenDecimals)) /
+                PRICE_DENOMINATOR;
+        }
     }
 
     function weiToToken(
         uint256 amount,
+        uint8 tokenDecimals,
         uint256 price
     ) public pure returns (uint256) {
-        return (amount * PRICE_DENOMINATOR) / price;
+        if (tokenDecimals >= 18) {
+            return
+                (amount * PRICE_DENOMINATOR * 10 ** (tokenDecimals - 18)) /
+                price;
+        } else {
+            return
+                (amount * PRICE_DENOMINATOR) /
+                (price * 10 ** (18 - tokenDecimals));
+        }
     }
 
     function unwrapWeth(uint256 amount) internal {
