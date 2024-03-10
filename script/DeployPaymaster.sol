@@ -45,6 +45,7 @@ contract DeployScript is Script {
             0x0000007EabfC2E6a6b33b21D2f73D58941BAb574
         );
         console.log("Paymaster address: ", address(paymaster));
+        paymaster.updateCachedPrice(true);
         vm.stopBroadcast();
     }
 }
