@@ -10,11 +10,14 @@ import { polygon } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 import EntryPointAbi from "./abi/EntryPoint";
 import BasicAccountFactoryAbi from "./abi/BasicAccountFactory";
+import BasicAccountAbi from "./abi/BasicAccount";
+import ERC20Abi from "./abi/ERC20";
 import { UserOperation, getUserOpHash } from "./utils/userOp";
 
 require("dotenv").config();
 
 const entrypointAddress = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
+const usdtAddress = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
 const bundlerPrivateKey = process.env.PRIVATE_KEY;
 if (!bundlerPrivateKey) {
   throw new Error("PRIVATE_KEY env variable is missing");
@@ -50,12 +53,13 @@ const basicAccountFactory = getContract({
 
 const paymasterTokenAddress = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
 const paymasterAddress = "0x707BbD5805Ce7E0E08ca2b0B22daAE228261356b";
-const accountOwnerWallet = privateKeyToAccount(accountOwnerPrivateKey as `0x${string}`).address;
+const accountOwnerWallet = privateKeyToAccount(
+  accountOwnerPrivateKey as `0x${string}`
+).address;
 const accountFactoryNonce = 1n;
-// const sender = "0x370A95A80a233b3Fd3aa9D5256FB00885C616157";
 
 async function handleOps() {
-  // calculate sender address
+  // calculate sender address (0x370A95A80a233b3Fd3aa9D5256FB00885C616157)
   const sender = await basicAccountFactory.read.getAddress([
     accountOwnerWallet,
     paymasterTokenAddress,
@@ -88,18 +92,29 @@ async function handleOps() {
     }).substring(2);
     initCode = (basicAccountFactory + createAccountCalldata) as `0x${string}`;
   }
+
+  const innerCalldata = encodeFunctionData({
+    abi: ERC20Abi,
+    functionName: "transfer",
+    args: ["0x0000007EabfC2E6a6b33b21D2f73D58941BAb574" as const, 70000n],
+  });
+  const calldata = encodeFunctionData({
+    abi: BasicAccountAbi,
+    functionName: "execute",
+    args: [usdtAddress, 0n, innerCalldata],
+  });
+
   const paymasterAndData = (paymasterAddress +
     // paymasterVerificationGasLimit
     (80000).toString(16).padStart(32, "0") +
     // paymasterPostOpGasLimit
-    (60000).toString(16).padStart(32, "0")
-  ) as `0x${string}`;
+    (60000).toString(16).padStart(32, "0")) as `0x${string}`;
+
   const userOp: UserOperation = {
     sender: sender,
     nonce: accountNonce,
-    initCode:  initCode,
-    callData:
-      "0xb61d27f6000000000000000000000000c2132d05d31c914a87c6611c10748aeb04b58e8f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000000000007eabfc2e6a6b33b21d2f73d58941bab57400000000000000000000000000000000000000000000000000000000000aae6000000000000000000000000000000000000000000000000000000000" as const,
+    initCode: initCode,
+    callData: calldata,
     accountGasLimits,
     preVerificationGas: 50000n,
     gasFees,
