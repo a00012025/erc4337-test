@@ -96,11 +96,11 @@ export function getUserOpHash(
   op: NotPromise<UserOperation>,
   entryPoint: string,
   chainId: number
-): string {
+): `0x{string}` {
   const userOpHash = keccak256(packUserOp(op, true));
   const enc = defaultAbiCoder.encode(
     ["bytes32", "address", "uint256"],
     [userOpHash, entryPoint, chainId]
   );
-  return keccak256(enc);
+  return keccak256(enc) as `0x{string}`;
 }

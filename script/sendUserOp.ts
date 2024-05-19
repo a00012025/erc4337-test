@@ -18,11 +18,11 @@ require("dotenv").config();
 
 const entrypointAddress = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
 const usdtAddress = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
-const bundlerPrivateKey = process.env.PRIVATE_KEY;
+const bundlerPrivateKey = process.env.PRIVATE_KEY as `0x${string}`;
 if (!bundlerPrivateKey) {
   throw new Error("PRIVATE_KEY env variable is missing");
 }
-const accountOwnerPrivateKey = process.env.SIG_PRIVATE_KEY;
+const accountOwnerPrivateKey = process.env.SIG_PRIVATE_KEY as `0x${string}`;
 if (!accountOwnerPrivateKey) {
   throw new Error("SIG_PRIVATE_KEY env variable is missing");
 }
@@ -32,7 +32,7 @@ const publicClient = createPublicClient({
   transport: http(),
 });
 const bundlerWalletClient = createWalletClient({
-  account: privateKeyToAccount(bundlerPrivateKey as `0x${string}`),
+  account: privateKeyToAccount(bundlerPrivateKey),
   chain: polygon,
   transport: http(),
 });
@@ -51,18 +51,15 @@ const basicAccountFactory = getContract({
   client: publicClient,
 });
 
-const paymasterTokenAddress = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
 const paymasterAddress = "0x707BbD5805Ce7E0E08ca2b0B22daAE228261356b";
-const accountOwnerWallet = privateKeyToAccount(
-  accountOwnerPrivateKey as `0x${string}`
-).address;
+const accountOwnerWallet = privateKeyToAccount(accountOwnerPrivateKey).address;
 const accountFactoryNonce = 1n;
 
 async function handleOps() {
   // calculate sender address (0x370A95A80a233b3Fd3aa9D5256FB00885C616157)
   const sender = await basicAccountFactory.read.getAddress([
     accountOwnerWallet,
-    paymasterTokenAddress,
+    usdtAddress,
     paymasterAddress,
     accountFactoryNonce,
   ]);
@@ -74,7 +71,9 @@ async function handleOps() {
     // callGasLimit
     (40000).toString(16).padStart(32, "0")) as `0x${string}`;
   const gasFees = ("0x" +
+    // max fee
     (gasPriceGwei * 1e9).toString(16).padStart(32, "0") +
+    // max priority fee
     (gasPriceGwei * 1e9).toString(16).padStart(32, "0")) as `0x${string}`;
 
   const accountNonce = await entryPoint.read.getNonce([sender, 0n]);
@@ -85,12 +84,13 @@ async function handleOps() {
       functionName: "createAccount",
       args: [
         accountOwnerWallet,
-        paymasterTokenAddress,
+        usdtAddress,
         paymasterAddress,
         accountFactoryNonce,
       ],
     }).substring(2);
-    initCode = (basicAccountFactory + createAccountCalldata) as `0x${string}`;
+    initCode = (basicAccountFactoryAddress +
+      createAccountCalldata) as `0x${string}`;
   }
 
   const innerCalldata = encodeFunctionData({
@@ -123,14 +123,10 @@ async function handleOps() {
   };
 
   // sign userOp
-  const userOpHash = getUserOpHash(userOp, entrypointAddress, 137);
+  const userOpHash = getUserOpHash(userOp, entrypointAddress, polygon.id);
   userOp.signature = (await privateKeyToAccount(
-    accountOwnerPrivateKey as `0x${string}`
-  ).signMessage({
-    message: {
-      raw: userOpHash as `0x${string}`,
-    },
-  })) as `0x${string}`;
+    accountOwnerPrivateKey
+  ).signMessage({ message: { raw: userOpHash } })) as `0x${string}`;
   console.log("Full user op:", userOp);
 
   // get nonce and broadcast
