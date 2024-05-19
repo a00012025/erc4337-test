@@ -1,10 +1,4 @@
-import {
-  defaultAbiCoder,
-  hexConcat,
-  hexlify,
-  keccak256,
-  resolveProperties,
-} from "ethers/lib/utils";
+import { defaultAbiCoder, keccak256 } from "ethers/lib/utils";
 
 // reverse "Deferrable" or "PromiseOrValue" fields
 export type NotPromise<T> = {
